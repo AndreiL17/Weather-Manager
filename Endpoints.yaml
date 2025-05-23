@@ -1,0 +1,605 @@
+openapi: 3.1.0
+info:
+  title: Title
+  version: 1.0.0
+
+servers:
+  - url: 'https'
+
+components:
+  # Common Parameter Definitions
+  parameters:
+    # Common query parameters
+    page:
+      in: query
+      name: page
+      required: true
+      description: Page number for pagination
+      schema:
+        type: integer
+        example: 0
+    size:
+      in: query
+      name: size
+      required: true
+      description: Page size for pagination
+      schema:
+        type: integer
+        enum: [10, 20, 50, 100]
+        example: 10
+
+    format:
+      in: query
+      name: format
+      required: false
+      description: The desired response format (JSON or CSV)
+      schema:
+        type: string
+        enum: [json, csv]
+        default: json
+
+    id:
+      in: path
+      name: id
+      required: true
+      description: ID of the weather report
+      schema:
+        type: integer
+        example: 42
+
+    city:
+      in: path
+      name: city
+      required: true
+      description: City name
+      schema:
+        type: string
+        example: Geneva
+
+    year:
+      in: query
+      name: year
+      required: true
+      description: Year of the report
+      schema:
+        type: integer
+        example: 2023
+
+    month:
+      in: query
+      name: month
+      required: true
+      description: Month of the report
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+        example: 7
+
+    day:
+      in: query
+      name: day
+      required: false
+      description: Day of the report
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 31
+        example: 15
+
+    hour:
+      in: query
+      name: hour
+      required: false
+      description: Hour of the report
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 23
+        example: 13
+
+    extremity:
+      in: query
+      name: extremity
+      required: true
+      description: The type of extremity (min or max)
+      schema:
+        type: string
+        enum: [min, max]
+        example: max
+
+    N:
+      in: query
+      name: n
+      required: true
+      description: How many extreme temperatures to return
+      schema:
+        type: integer
+        example: 5
+
+    M:
+      in: query
+      name: years
+      required: true
+      description: How many past years to consider
+      schema:
+        type: integer
+        example: 2
+
+    precipitation_city:
+      in: query
+      name: city
+      required: true
+      description: City name for precipitation
+      schema:
+        type: string
+        example: Geneva
+
+    precipitation_month:
+      in: query
+      name: month
+      required: true
+      description: Month for precipitation data
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+        example: 7
+
+  # Schemas (DTOs)
+  schemas:
+    WeatherReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        city:
+          type: string
+        datetime:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28Z'
+        temperature:
+          type: number
+          format: double
+        precipitation:
+          type: number
+          format: double
+        rain:
+          type: number
+          format: double
+        snowfall:
+          type: number
+          format: double
+        cloudCover:
+          type: integer
+        windSpeed:
+          type: number
+          format: double
+
+    ExtremeTemperature:
+      type: object
+      properties:
+        city:
+          type: string
+        temperature:
+          type: number
+          format: double
+        datetime:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28Z'
+
+    PrecipitationReport:
+      type: object
+      properties:
+        datetime:
+          type: string
+          format: date-time
+          example: '2017-07-21T17:32:28Z'
+        precipitation:
+          type: number
+          format: double
+
+  # Common Error Responses
+  responses:
+    BadRequest:
+      description: Request was not well-formed. See error details.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error-message:
+                type: string
+                description: Error message detailing the problem with the request
+
+  # Example(s)
+  examples:
+    WeatherReportExample:
+      city: Geneva
+      datetime: 2017-07-21T17:32:28Z
+      temperature: 15.2
+      precipitation: 0.0
+      rain: 0.0
+      snowfall: 0.0
+      cloudCover: 5
+      windSpeed: 7.0
+
+paths:
+  ####################################
+  # 1) POST /weather
+  ####################################
+  /weather:
+    post:
+      tags:
+        - Weather Reports
+      summary: "Add a new weather report"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeatherReport"
+            example:
+              $ref: "#/components/examples/WeatherReportExample"
+          text/csv:
+            schema:
+              type: string
+              format: csv
+            example: |
+              city,datetime,temperature,precipitation,rain,snowfall,cloudCover,windSpeed
+              Amsterdam,2017-07-21T17:32:28Z,15.2,0.0,0.0,5,7.3
+      responses:
+        '200':
+          description: Successfully added a weather report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherReport"
+              example:
+                $ref: "#/components/examples/WeatherReportExample"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+    get:
+      tags:
+        - Weather Reports
+      summary: "Retrieve all weather reports with pagination and optional format"
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/size"
+        - $ref: "#/components/parameters/format"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WeatherReport"
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  number:
+                    type: integer
+                  size:
+                    type: integer
+            text/csv:
+              schema:
+                type: string
+                format: csv
+              example: |
+                city,datetime,temperature,precipitation,rain,snowfall,cloudCover,windSpeed
+                Amsterdam,2017-07-21T17:32:28Z,15.2,0.0,0.0,5,7.3
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 2) GET /weather/{id}
+  # 3) PUT /weather/{id}
+  # 4) DELETE /weather/{id}
+  ####################################
+  /weather/{id}:
+    get:
+      tags:
+        - Weather Reports
+      summary: "Retrieve a specific weather report by ID with optional format"
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/format"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherReport"
+              example:
+                $ref: "#/components/examples/WeatherReportExample"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Weather report not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+    put:
+      tags:
+        - Weather Reports
+      summary: "Update an existing weather report by ID"
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeatherReport"
+          text/csv:
+            schema:
+              type: string
+              format: csv
+      responses:
+        '200':
+          description: Report updated, returns the new state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherReport"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Weather report not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+    delete:
+      tags:
+        - Weather Reports
+      summary: "Delete a weather report by ID"
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        '204':
+          description: Successfully deleted
+        '404':
+          description: Weather report not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 5) GET /weather/city/{city}
+  # 6) PUT /weather/city/{city}
+  # 7) DELETE /weather/city/{city}
+  ####################################
+  /weather/city/{city}:
+    get:
+      tags:
+        - Weather Reports by City
+      summary: "Retrieve weather reports for a specific city and time period"
+      parameters:
+        - $ref: "#/components/parameters/city"
+        - $ref: "#/components/parameters/format"
+        - $ref: "#/components/parameters/year"
+        - $ref: "#/components/parameters/month"
+        - $ref: "#/components/parameters/day"
+        - $ref: "#/components/parameters/hour"
+      responses:
+        '200':
+          description: OK — returns a single WeatherReport if day/hour provided, otherwise returns an array
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/WeatherReport"
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/WeatherReport"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Weather report(s) not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+    put:
+      tags:
+        - Weather Reports by City
+      summary: "Update a weather report by city and date/time"
+      parameters:
+        - $ref: "#/components/parameters/city"
+        - $ref: "#/components/parameters/year"
+        - $ref: "#/components/parameters/month"
+        - $ref: "#/components/parameters/day"
+        - $ref: "#/components/parameters/hour"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeatherReport"
+          text/csv:
+            schema:
+              type: string
+              format: csv
+      responses:
+        '200':
+          description: Report updated, returns the new state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherReport"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Weather report not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+    delete:
+      tags:
+        - Weather Reports by City
+      summary: "Delete a weather report by city and date/time"
+      parameters:
+        - $ref: "#/components/parameters/city"
+        - $ref: "#/components/parameters/year"
+        - $ref: "#/components/parameters/month"
+        - $ref: "#/components/parameters/day"
+        - $ref: "#/components/parameters/hour"
+      responses:
+        '204':
+          description: Successfully deleted
+        '404':
+          description: Weather report not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 8) GET /weather/{city}/avgTemp
+  ####################################
+  /weather/{city}/avgTemp:
+    get:
+      tags:
+        - Statistics
+      summary: "Get the average temperature per month for each year, starting from the given year up to 2024"
+      parameters:
+        - $ref: "#/components/parameters/city"
+        - $ref: "#/components/parameters/year"
+      responses:
+        '200':
+          description: Successfully retrieved average temperatures for multiple years (each year has 12 monthly averages)
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A mapping of year -> list of 12 monthly averages
+                additionalProperties:
+                  type: array
+                  items:
+                    type: number
+                example:
+                  2023: [1.0, 2.5, 3.1, 6.8, 9.2, 12.1, 15.4, 17.9, 14.3, 10.2, 5.1, 2.3]
+                  2024: [1.2, 2.7, 3.9, 7.3, 10.5, 13.2, 18.1, 20.3, 16.7, 9.5, 4.2, 2.0]
+            text/csv:
+              schema:
+                type: string
+                format: csv
+              example: |
+                year,January,February,March,April,May,June,July,August,September,October,November,December
+                2023,1.0,2.5,3.1,6.8,9.2,12.1,15.4,17.9,14.3,10.2,5.1,2.3
+                2024,1.2,2.7,3.9,7.3,10.5,13.2,18.1,20.3,16.7,9.5,4.2,2.0
+        '404':
+          description: Not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 9) GET /weather/extremeTemp
+  ####################################
+  /weather/extremeTemp:
+    get:
+      tags:
+        - Statistics
+      summary: "Get the top or bottom N temperatures for a given year"
+      parameters:
+        - $ref: "#/components/parameters/year"
+        - $ref: "#/components/parameters/N"
+        - $ref: "#/components/parameters/extremity"
+        - $ref: "#/components/parameters/format"
+      responses:
+        '200':
+          description: Successfully retrieved the requested extreme temperatures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExtremeTemperature"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Content not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 10) GET /weather/extremeTempM
+  ####################################
+  /weather/extremeTempM:
+    get:
+      tags:
+        - Statistics
+      summary: "Get the top or bottom N temperatures for the last M years"
+      parameters:
+        - $ref: "#/components/parameters/M"
+        - $ref: "#/components/parameters/N"
+        - $ref: "#/components/parameters/extremity"
+        - $ref: "#/components/parameters/format"
+      responses:
+        '200':
+          description: Successfully retrieved the requested extreme temperatures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExtremeTemperature"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '404':
+          description: Content not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
+  ####################################
+  # 11) GET /weather/precipitation
+  ####################################
+  /weather/precipitation:
+    get:
+      tags:
+        - Precipitation
+      summary: "Retrieve daily precipitation data for a city and month with pagination"
+      parameters:
+        - $ref: "#/components/parameters/precipitation_city"
+        - $ref: "#/components/parameters/precipitation_month"
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/size"
+        - $ref: "#/components/parameters/format"
+      responses:
+        '200':
+          description: Successfully retrieved precipitation data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PrecipitationReport"
+            text/csv:
+              schema:
+                type: string
+                format: csv
+        '400':
+          $ref: "#/components/responses/BadRequest"
